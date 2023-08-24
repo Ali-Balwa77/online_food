@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { cutomerLogin, customerSignUp, customerVerify, editcustomerProfile, getcustomerProfile, requestOtp } from '../controllers';
+import { cutomerLogin, customerSignUp, customerVerify, editcustomerProfile, getcustomerProfile, requestOtp, createOrder, getOrders, getOrderById, addToCart, getCart, deleteCart } from '../controllers';
 import { Authenticate } from '../middleware';
 
 const router = express.Router();
@@ -16,7 +16,6 @@ router.use(Authenticate);
 /* ------------------- Verify Customer Account --------------------- */
 router.patch('/verify', customerVerify)
 
-
 /* ------------------- OTP / request OTP --------------------- */
 router.get('/otp', requestOtp)
 
@@ -25,11 +24,17 @@ router.get('/profile', getcustomerProfile)
 router.patch('/profile', editcustomerProfile)
 
 //Cart
+router.post('/cart', addToCart)
+router.get('/cart', getCart)
+router.delete('/cart', deleteCart)
 
 //Apply Offers
 
 //Payment
 
 //Order
+router.post('/create-order', createOrder)
+router.get('/orders', getOrders)
+router.get('/order/:id', getOrderById)
 
 export { router as customerRoute}

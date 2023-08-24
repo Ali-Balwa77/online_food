@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { MONGO_URI } from "../config";
+import { LOCAL_MONGO_URI, MONGO_URI } from "../config";
 
 export default async () => {
 
