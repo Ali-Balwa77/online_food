@@ -26,8 +26,6 @@ const foodSchema = new Schema({
 {
     toJSON: {
         transform(doc, ret) {
-            delete ret.password;
-            delete ret.salt;
             delete ret.__v;
             delete ret.createdAt;
             delete ret.updatedAt;
@@ -36,6 +34,6 @@ const foodSchema = new Schema({
     timestamps: true,
 })
 
-const food = mongoose.model<foodDoc>('food', foodSchema);
+const Food = mongoose.model<foodDoc>('food', foodSchema);
 
-export { food };
+export { Food };

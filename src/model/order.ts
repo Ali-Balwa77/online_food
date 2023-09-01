@@ -2,16 +2,20 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface orderDoc extends Document {
     orderID: string,
+    vandorId: string,
     items: [any],
     totalAmount: number,
+    paidAmount: number,
     orderDate: Date,
-    paidThrogh: string,
-    paymentResponse: string,
     orderStatus: string,
+    remarks: string,
+    deliveryId: string,
+    readyTime: number,
 }
 
 const orderSchema = new Schema({
     orderID: { type: String, required: true },
+    vandorId: { type: String, required: true },
     items: [
         {
             food: { type: Schema.Types.ObjectId, ref: 'food', required: true },
@@ -19,16 +23,16 @@ const orderSchema = new Schema({
         }
     ],
     totalAmount: { type: Number, required: true },
+    paidAmount: { type: Number, required: true },
     orderDate: { type: Date },
-    paidThrogh: { type: String },
-    paymentResponse: { type: String },
     orderStatus: { type: String },
+    remarks: { type: String },
+    deliveryId: { type: String },
+    readyTime: { type: Number },
 },
 {
     toJSON: {
         transform(doc, ret) {
-            delete ret.password;
-            delete ret.salt;
             delete ret.__v;
             delete ret.createdAt;
             delete ret.updatedAt;
@@ -37,6 +41,6 @@ const orderSchema = new Schema({
     timestamps: true,
 })
 
-const order = mongoose.model<orderDoc>('order', orderSchema);
+const Order = mongoose.model<orderDoc>('order', orderSchema);
 
-export { order };
+export { Order };

@@ -13,18 +13,33 @@ export interface EditVendorInput{
     name: string;
     address: string;
     phone: string;
-    foodTypes:[string]
+    foodTypes:[string];
 }
 
 export interface VendorLoginInput {
-    email: string
-    password: string
+    email: string;
+    password: string;
 }
 
 export interface VendorPayload {
-
     _id: string;
     email: string;
     name: string;
 }
 
+export interface CreateOfferInputs {
+    offerType: string;
+    vandors: [any];
+    title: string;
+    description: string;
+    minValue: number;
+    offerAmount: number;
+    startValidity: Date;
+    endValidity: Date;
+    promoCode: string;
+    promoType: string;
+    bank: [any];
+    bins: [any];
+    pincode: string;
+    isActive: boolean;
+}

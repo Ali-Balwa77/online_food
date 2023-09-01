@@ -1,9 +1,9 @@
 import { plainToClass } from "class-transformer";
 import { NextFunction, Request, Response } from "express";
-import { CreateCustomerInput, CustomerLoginInput, EditCustomerProfileInput, OrderInputs } from "../dto";
+import { CreateCustomerInput, EditCustomerProfileInput, OrderInputs, UserLoginInput, cartItem } from "../dto";
 import { validate } from "class-validator";
 import { generateOtp, generatePassword, generateSalt, generateSignature, onRequestOtp, validatePassword } from "../utility";
-import { customer, food, order } from "../model";
+import { Customer, DeliveryUser, Food, Offer, Order, Transaction, Vandor } from "../model";
 
 export const customerSignUp = async (req: Request, res: Response, next: NextFunction) => {
 
@@ -22,13 +22,13 @@ export const customerSignUp = async (req: Request, res: Response, next: NextFunc
 
     const { otp, expiry } = generateOtp();
 
-    const existCustomer = await customer.findOne({email: email});
+    const existCustomer = await Customer.findOne({email: email});
 
     if(existCustomer !== null) {
         return res.status(409).json({ message: 'An user exist with the provided email ID.' })
     }
 
-    const result = await customer.create({
+    const result = await Customer.create({
         email: email,
         password: userPassword,
         salt: salt,
@@ -65,7 +65,7 @@ export const customerSignUp = async (req: Request, res: Response, next: NextFunc
 
 export const cutomerLogin = async (req: Request, res: Response, next: NextFunction) => {
 
-    const loginInputs = plainToClass(CustomerLoginInput, req.body);
+    const loginInputs = plainToClass(UserLoginInput, req.body);
 
     const loginError = await validate(loginInputs, { validationError: { target: true } } )
 
@@ -75,23 +75,23 @@ export const cutomerLogin = async (req: Request, res: Response, next: NextFuncti
 
     const { email, password } = loginInputs;
 
-    const Customer = await customer.findOne({ email: email });
+    const customer = await Customer.findOne({ email: email });
 
-    if(Customer) {
+    if(customer) {
 
-        const validation =  await validatePassword(password, Customer.password, Customer.salt);
+        const validation =  await validatePassword(password, customer.password, customer.salt);
 
         if(validation) {
 
              // generate the signature 
             const signature = generateSignature({
-                _id: Customer._id,
-                email: Customer.email,
-                verified: Customer.verified  
+                _id: customer._id,
+                email: customer.email,
+                verified: customer.verified  
             })
 
             // send the result to client 
-            return res.status(201).json({signature: signature, verified: Customer.verified, email: Customer.email})
+            return res.status(201).json({signature: signature, verified: customer.verified, email: customer.email})
         
         }
     }
@@ -103,11 +103,11 @@ export const cutomerLogin = async (req: Request, res: Response, next: NextFuncti
 export const customerVerify = async (req: Request, res: Response, next: NextFunction) => {
 
     const { otp } = req.body;
-    const Customer = req.user;
+    const customer = req.user;
     
-    if(Customer) {
+    if(customer) {
         
-        const profile = await customer.findById(Customer._id);
+        const profile = await Customer.findById(customer._id);
 
         if(profile) {
             
@@ -134,11 +134,11 @@ export const customerVerify = async (req: Request, res: Response, next: NextFunc
 
 export const requestOtp = async (req: Request, res: Response, next: NextFunction) => {
 
-    const Customer = req.user;
+    const customer = req.user;
 
-    if(Customer) {
+    if(customer) {
 
-        const profile = await customer.findById(Customer._id);
+        const profile = await Customer.findById(customer._id);
 
         if(profile) {
              
@@ -160,11 +160,11 @@ export const requestOtp = async (req: Request, res: Response, next: NextFunction
 
 export const getcustomerProfile = async (req: Request, res: Response, next: NextFunction) => {
 
-    const Customer = req.user;
+    const customer = req.user;
 
-    if(Customer) {
+    if(customer) {
 
-        const profile = await customer.findById(Customer._id);
+        const profile = await Customer.findById(customer._id);
 
         if(profile) {
 
@@ -179,7 +179,7 @@ export const getcustomerProfile = async (req: Request, res: Response, next: Next
 
 export const editcustomerProfile = async (req: Request, res: Response, next: NextFunction) => {
 
-    const Customer = req.user;
+    const customer = req.user;
 
     const profileInputs = plainToClass(EditCustomerProfileInput, req.body);
 
@@ -191,9 +191,9 @@ export const editcustomerProfile = async (req: Request, res: Response, next: Nex
 
     const { firstName, lastName , address } = profileInputs;
 
-    if(Customer) {
+    if(customer) {
 
-        const profile = await customer.findById(Customer._id);
+        const profile = await Customer.findById(customer._id);
 
         if(profile) {
              
@@ -215,44 +215,41 @@ export const editcustomerProfile = async (req: Request, res: Response, next: Nex
 
 export const addToCart = async (req: Request, res: Response, next: NextFunction) => {
 
-    const Customer = req.user;
+    const customer = req.user;
     
-    if(Customer) {
-        const profile = await customer.findById(Customer._id).populate('cart.food');
+    if(customer) {
+        const profile = await Customer.findById(customer._id).populate('cart.food');
         let cartItems = Array();
         
-        const { _id, unit } = <OrderInputs>req.body;
+        const { _id, unit } = <cartItem>req.body;
         
-        const Food = await food.findById(_id);
+        const food = await Food.findById(_id);
         
-        if(Food) {
+        if(food) {
             
             if(profile != null) {
                 // check for cart items
                 cartItems = profile.cart;
                 
                 if(cartItems.length > 0) {
-                    // check and update unit
                     let existFoodItem = cartItems.filter((item) => item.food._id.toString() === _id);
 
                     if(existFoodItem.length > 0) {
                         const index = cartItems.indexOf(existFoodItem[0]);
 
                         if(unit > 0) {
-                            cartItems[index] = {Food, unit};
+                            cartItems[index] = {food, unit};
                         }else {
                             cartItems.splice(index, 1);
                         }
 
                     }else {
-                        cartItems.push({Food, unit})
+                        cartItems.push({food, unit})
                     }
                      
                 }else{ 
                     // add new item to cart
-                    console.log(Food,'strt');
-
-                    cartItems.push({Food, unit})
+                    cartItems.push({food, unit})
                 }
 
                 if(cartItems) {
@@ -270,39 +267,186 @@ export const addToCart = async (req: Request, res: Response, next: NextFunction)
 
 }
 
-export const getCart = async (req: Request, res: Response, next: NextFunction) => {}
+export const getCart = async (req: Request, res: Response, next: NextFunction) => {
 
-export const deleteCart = async (req: Request, res: Response, next: NextFunction) => {}
+    const customer = req.user;
+
+    if(customer) {
+
+        const profile = await Customer.findById(customer._id).populate('cart.food');
+
+        if(profile) {
+
+            return res.status(200).json(profile.cart)
+
+        }
+
+    }
+
+    return res.status(400).json({ message: 'Cart is Empty!' });
+
+}
+
+export const deleteCart = async (req: Request, res: Response, next: NextFunction) => {
+
+    const customer = req.user;
+
+    if(customer) {
+
+        const profile = await Customer.findById(customer._id).populate('cart.food');
+
+        if(profile != null) {
+
+            profile.cart = [] as any;
+            const cartResult = await profile.save();
+
+            return res.status(200).json(cartResult)
+
+        }
+
+    }
+
+    return res.status(400).json({ message: 'Cart is already Empty!' });
+
+}
+
+/* -------------------- create payment --------------------- */
+
+export const createPayment = async (req: Request, res: Response, next: NextFunction) => {
+
+    const customer = req.user;
+
+    const { amount, paymentMode, offerId } = req.body;
+
+    let payableAmount = Number(amount);
+
+    if(offerId) {
+
+        const appliedOffer = await Offer.findById(offerId);
+
+        if(appliedOffer) {
+
+            if(appliedOffer.isActive) {
+
+                payableAmount = (payableAmount - appliedOffer.offerAmount);
+            }
+        }
+    }
+
+    // Perform Payment getway charge API call
+
+    // right after paymet getway success / failure response
+
+    // Create recored on transaction
+    const transaction = await Transaction.create({
+        customer: customer._id,
+        vandorId: '',
+        orderId: '',
+        orderValue: payableAmount,
+        offerUsed: offerId || 'NA',
+        status: 'OPEN',
+        paymentMode: paymentMode,
+        paymentResponse: 'Payment is Cash on Delivery',
+    })
+
+    // return transacrtion ID
+    return res.status(200).json(transaction);
+
+}
 
 /* -------------------- Order section --------------------- */
+
+const assignOrderForDelivery = async (orderId: string, vandorId: string) => {
+
+    // find the vandor
+    const vandor = await Vandor.findById(vandorId);
+
+    if(vandor) {
+
+        const areaCode = vandor.pincode;
+        const vandorLat = vandor.lat; 
+        const vandorLng = vandor.lng;
+
+        // find the available Delivery Person
+        const deliveryPerson  = await DeliveryUser.find({ pincode: areaCode, verified:true, isAvailable:true });
+
+        if(deliveryPerson) {
+
+            // check the nearest delivery person and assign the order
+            const currentOrder = await Order.findById(orderId)
+
+            if(currentOrder) {
+
+                // update deliveryID
+                currentOrder.deliveryId = deliveryPerson[0]._id
+
+                await currentOrder.save();
+                
+                // Notify to vandor for received new Order usinf firebase push notification  
+            }
+        }
+    }
+
+}
+
+/* -------------------- Order section --------------------- */
+
+const validateTransaction = async (txnId: string) => {
+
+    const currentTransaction = await Transaction.findById(txnId);
+
+    if(currentTransaction) {
+
+        if(currentTransaction.status.toLowerCase() !== 'failed') {
+            return { status: true, currentTransaction }
+        }
+    }
+
+    return { status: false, currentTransaction }
+
+}
 
 export const createOrder = async (req: Request, res: Response, next: NextFunction) => {
 
     // grab current login customer
-    const Customer = req.user;
+    const customer = req.user;
 
-    if(Customer) {
+    const { txnId, amount, items } = <OrderInputs>req.body;
+
+    if(customer) {
+
+        // validate transaction
+        const { status, currentTransaction } = await validateTransaction(txnId)
+
+        if(!status) {
+            return res.status(400).json({message: "Error with Create Order!"})
+        }
+
         // create an order ID
         const orderId = `${Math.floor(Math.random() * 89999) + 1000}`;
 
-        const profile = await customer.findById(Customer._id);
+        const profile = await Customer.findById(customer._id);
 
         // grab order items from request [{ id: xx, unit: xx }]
-        const cart = <[OrderInputs]>req.body; 
 
         let cartItems = Array();
         
         let netAmount = 0.0;
 
+        let vandorId;
+
         // claculate order amount 
-        const foods = await food.find().where('_id').in(cart.map(item => item._id)).exec();
+        const foods = await Food.find().where('_id').in(items.map(item => item._id)).exec();
 
         foods.map(food => {
-            cart.map(({_id, unit}) => {
+            items.map(({_id, unit}) => {
 
                 if(food._id == _id) {
+                    vandorId = food._id,
                     netAmount += (food.price * unit);
-                    cartItems.push({food, unit});
+                    cartItems.push({food, unit: unit});
+                }else {
+                    console.log(`${food._id} / ${_id}`);
                 }
             })
         })
@@ -310,23 +454,33 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
         if(cartItems) {
             // craete order 
 
-            const currentOrder = await order.create({
+            const currentOrder = await Order.create({
                 orderID: orderId,
+                vandorId: vandorId,
                 items: cartItems,
                 totalAmount: netAmount,
                 orderDate: new Date(),
-                paidThrogh: 'COD',
-                paymentResponse: '',
+                paidAmount: amount,
                 orderStatus: 'Waiting',
+                remarks: '',
+                deliveryId: '',
+                readyTime: 45,
             })
 
-            if(currentOrder) {
+            profile.cart = [] as any;
+            profile.orders.push(currentOrder);
 
-                profile.orders.push(currentOrder);
-                await profile.save();
+            currentTransaction.vandorId = vandorId;
+            currentTransaction.orderId = orderId;
+            currentTransaction.status = 'CONFIRMED';
 
-                return res.status(201).json(currentOrder);
-            }
+            await currentTransaction.save();
+
+            assignOrderForDelivery(currentOrder._id, vandorId);
+
+            const profileSaveResponse = await profile.save();
+
+            return res.status(201).json(profileSaveResponse);
         }
                 
     }
@@ -337,11 +491,11 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
     
 export const getOrders = async (req: Request, res: Response, next: NextFunction) => {
 
-    const Customer = req.user;
+    const customer = req.user;
 
-    if(Customer) {
+    if(customer) {
 
-        const profile = await customer.findById(Customer._id).populate('orders');
+        const profile = await Customer.findById(customer._id).populate('orders');
 
         if(profile) {
              
@@ -361,11 +515,11 @@ export const getOrderById = async (req: Request, res: Response, next: NextFuncti
 
     if(orderId) {
 
-        const Order = await order.findById(orderId).populate('items.food');
+        const order = await Order.findById(orderId).populate('items.food');
 
-        if(Order) {
+        if(order) {
              
-            return res.status(200).json(Order);
+            return res.status(200).json(order);
 
         }
 
@@ -374,3 +528,33 @@ export const getOrderById = async (req: Request, res: Response, next: NextFuncti
     return res.status(400).json({ message: 'Error with Fetch Order!' });
 
 }
+
+export const verifyOffer = async (req: Request, res: Response, next: NextFunction) => {
+
+    const offerId = req.params.id;
+    const customer = req.user;
+
+    if(customer) {
+
+        const appliedOffer = await Offer.findById(offerId);
+
+        if(appliedOffer) {
+
+            if(appliedOffer.promoType === 'USER') {
+
+                // only can apply once per user 
+
+            }else{
+
+                if(appliedOffer.isActive) {
+    
+                    return res.status(200).json({message: 'Offer is valid', offer: appliedOffer})
+                }
+            }
+        }
+    } 
+
+    return res.status(400).json({ message: 'Offer is not valid!' });
+
+}
+

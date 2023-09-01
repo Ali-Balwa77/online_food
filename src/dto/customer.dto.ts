@@ -11,7 +11,7 @@ export class CreateCustomerInput {
     password: string;
 }
 
-export class CustomerLoginInput {
+export class UserLoginInput {
     @IsEmail()
     email: string;
     
@@ -40,7 +40,38 @@ export interface CustomerPayload {
 }
 
 
-export class OrderInputs {
+export class cartItem {
     _id: string;
     unit: number;
+}
+
+
+export class OrderInputs {
+    txnId: string;
+    amount: string;
+    items: [cartItem];
+}
+
+
+export class CreateDeliveryInput {
+    @IsEmail()
+    email: string;
+    
+    @Length(7,12)
+    phone: string;
+    
+    @Length(6,12)
+    password: string;
+
+    @Length(3,12)
+    firstName: string;
+
+    @Length(3,12)
+    lastName: string;
+
+    @Length(6,24)
+    address: string;
+
+    @Length(4,12)
+    pincode: string;
 }

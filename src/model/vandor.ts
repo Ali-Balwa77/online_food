@@ -14,6 +14,8 @@ interface vandorDoc extends Document {
     coverImage: [string];
     rating: number;
     foods: any;
+    lat: number;
+    lng: number;
 }
 
 const vandorSchema = new Schema({
@@ -33,6 +35,8 @@ const vandorSchema = new Schema({
         type: mongoose.SchemaTypes.ObjectId,
         ref: 'food',
     }],
+    lat: { type: Number },
+    lng: { type: Number },
 },
 {
     toJSON: {
@@ -47,6 +51,6 @@ const vandorSchema = new Schema({
     timestamps: true,
 })
 
-const vandor = mongoose.model<vandorDoc>('vandor', vandorSchema);
+const Vandor = mongoose.model<vandorDoc>('vandor', vandorSchema);
 
-export { vandor };
+export { Vandor };
